@@ -1,19 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 const CITIES = ['서울', '경기', '인천']
 const DISTRICTS = ['성동구', '마포구', '강남구', '용산구']
 const CATEGORIES = ['팝업 스토어', '전시', '행사']
-
-const mockPopups = [
-  { id: 1, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'SOON' },
-  { id: 2, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'OPEN' },
-  { id: 3, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'OPEN' },
-  { id: 4, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'OPEN' },
-  { id: 5, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'OPEN' },
-  { id: 6, category: 'BEAUTY_skincare', brand: 'toccobo', date: '5/10-15', status: 'CLOSED' },
-]
 
 const statusStyle = {
   SOON: { backgroundColor: '#FF3B30', color: 'white' },
@@ -26,6 +18,33 @@ export default function Main() {
   const [city, setCity] = useState('서울')
   const [district, setDistrict] = useState('성동구')
   const [category, setCategory] = useState('팝업 스토어')
+  const [popups, setPopups] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchPopups()
+  }, [])
+
+  async function fetchPopups() {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('popups')
+        .select('*')
+
+      console.log('data:', data)
+      console.log('error:', error)
+
+      if (error) {
+        console.error('에러 상세:', JSON.stringify(error))
+      } else {
+        setPopups(data)
+      }
+    } catch (e) {
+      console.error('catch 에러:', e.message)
+    }
+    setLoading(false)
+  }
 
   return (
     <div style={{ backgroundColor: '#E8F5D0', minHeight: '100vh', fontFamily: 'monospace', paddingBottom: '80px', maxWidth: '480px', margin: '0 auto' }}>
@@ -60,25 +79,38 @@ export default function Main() {
       {/* 리스트 */}
       <div style={{ padding: '16px 20px 0' }}>
         <div style={{ fontSize: '12px', letterSpacing: '2px', marginBottom: '8px' }}>LIST UP</div>
-        {mockPopups.map(popup => (
-          <div key={popup.id}
-            onClick={() => router.push(`/popup/${popup.id}`)}
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '12px 0', borderBottom: '1px dashed #999', cursor: 'pointer'
-            }}>
-            <span style={{ fontSize: '13px', flex: 1 }}>{popup.category}</span>
-            <span style={{ fontSize: '13px', flex: 1, textAlign: 'center' }}>{popup.brand}</span>
-            <span style={{ fontSize: '13px', flex: 1, textAlign: 'center' }}>{popup.date}</span>
-            <span style={{
-              fontSize: '10px', padding: '3px 8px', letterSpacing: '1px',
-              fontWeight: 'bold', minWidth: '52px', textAlign: 'center',
-              ...statusStyle[popup.status]
-            }}>
-              {popup.status}
-            </span>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontSize: '12px', color: '#999' }}>
+            불러오는 중...
           </div>
-        ))}
+        ) : popups.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontSize: '12px', color: '#999' }}>
+            등록된 팝업이 없어요
+          </div>
+        ) : (
+          popups.map(popup => (
+            <div key={popup.id}
+              onClick={() => router.push(`/popup/${popup.id}`)}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 0', borderBottom: '1px dashed #999', cursor: 'pointer'
+              }}>
+              <span style={{ fontSize: '13px', flex: 1 }}>{popup.category}</span>
+              <span style={{ fontSize: '13px', flex: 1, textAlign: 'center' }}>{popup.brand}</span>
+              <span style={{ fontSize: '13px', flex: 1, textAlign: 'center' }}>
+                {popup.date_start?.slice(5).replace('-', '/')}-{popup.date_end?.slice(5).replace('-', '/')}
+              </span>
+              <span style={{
+                fontSize: '10px', padding: '3px 8px', letterSpacing: '1px',
+                fontWeight: 'bold', minWidth: '52px', textAlign: 'center',
+                ...statusStyle[popup.status]
+              }}>
+                {popup.status}
+              </span>
+            </div>
+          ))
+        )}
       </div>
 
       {/* 하단 네비게이션 */}
